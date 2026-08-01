@@ -1,0 +1,19 @@
+agent-stuff
+Copyright 2026 Michael Schwieger
+
+This product includes software derived from mitsuhiko/agent-stuff by Armin
+Ronacher, licensed under the Apache License 2.0. The derived files retain
+provenance notices in their source headers.
+
+The skills were originally published as zekurio/pi-skills, licensed under the
+MIT License. See LICENSES/pi-skills-MIT.txt.
+
+The Catppuccin Frappé theme uses the Catppuccin palette, licensed under the MIT
+License. See LICENSES/catppuccin-MIT.txt.
+
+The Anthropic authentication extension is derived from
+@gotgenes/pi-anthropic-auth 2.0.1 by Chris Lasher, licensed under the MIT
+License. Its license is included at extensions/pi-anthropic-auth/LICENSE.
+
+The direnv extension is derived from pi-direnv 0.1.0 by Edmund Miller,
+licensed under the MIT License.

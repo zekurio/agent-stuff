@@ -1,0 +1,63 @@
+{
+  "name": "@zekurio/agent-stuff",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal extensions, skills, and themes for Pi Coding Agent",
+  "license": "Apache-2.0",
+  "keywords": [
+    "pi-package"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dependencies": {
+    "effect": "4.0.0-beta.101",
+    "firecrawl": "4.30.1"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/answer.ts",
+      "./extensions/async-agents.ts",
+      "./extensions/btw.ts",
+      "./extensions/effort.ts",
+      "./extensions/firecrawl-search/index.ts",
+      "./extensions/git-flow.ts",
+      "./extensions/image-anchors.ts",
+      "./extensions/no-sleep.ts",
+      "./extensions/priority-routing.ts",
+      "./extensions/pi-anthropic-auth/src/index.ts",
+      "./extensions/pi-direnv/index.ts"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "themes": [
+      "./themes/catppuccin-frappe.json"
+    ]
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-agent-core": {
+      "optional": true
+    },
+    "@earendil-works/pi-ai": {
+      "optional": true
+    },
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "@earendil-works/pi-tui": {
+      "optional": true
+    },
+    "typebox": {
+      "optional": true
+    }
+  }
+}

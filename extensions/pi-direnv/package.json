@@ -1,0 +1,37 @@
+{
+  "name": "pi-direnv",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Auto-load direnv environment at session start — ensures bash commands have project-specific env vars from .envrc",
+  "main": "./index.ts",
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "pi-package",
+    "direnv",
+    "nix",
+    "envrc"
+  ],
+  "author": "Edmund Miller <edmundmiller@hey.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edmundmiller/dotfiles.git",
+    "directory": "pi-packages/pi-direnv"
+  },
+  "files": [
+    "index.ts",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
