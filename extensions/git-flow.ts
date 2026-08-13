@@ -887,7 +887,7 @@ function isScopedAgentGuidance(path: string, cwdFromRoot: string): boolean {
 	const normalized = path.replaceAll("\\", "/");
 	const parts = normalized.split("/");
 	const basename = parts.at(-1)?.toLowerCase();
-	if (basename !== "agents.md" && basename !== "claude.md") return false;
+	if (basename !== "agents.md") return false;
 	const directory = parts.slice(0, -1).join("/");
 	return directory === "" || cwdFromRoot === directory || cwdFromRoot.startsWith(`${directory}/`);
 }

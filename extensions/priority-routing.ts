@@ -42,12 +42,6 @@ const ROUTES: Record<string, Routing> = {
 		label: "Azure OpenAI priority service tier",
 		payload: { service_tier: "priority" },
 	},
-	anthropic: {
-		label: "Anthropic fast mode",
-		payload: { speed: "fast" },
-		headers: { "anthropic-beta": "fast-mode-2026-02-01" },
-		supportsModel: (modelId) => /^claude-opus-4-(?:7|8)(?:-|$)/.test(modelId.toLowerCase()),
-	},
 	google: {
 		label: "Google priority service tier",
 		payload: { serviceTier: "priority" },
