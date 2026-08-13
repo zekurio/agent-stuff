@@ -344,62 +344,27 @@ function ingest(job: Job, event: any): void {
 	notifyChanged();
 }
 
-// --- Approved models / tiers ---------------------------------------------------
-
-type TierName = "easy" | "medium" | "hard";
-
-interface Tier {
-	/** What kind of job this tier is for; shown to the caller verbatim. */
-	blurb: string;
-	/** Ordered "provider/id[:thinking]" candidates; the first one the registry has wins. */
-	candidates: string[];
-}
+// --- Approved models -----------------------------------------------------------
 
 /**
- * The approved subagent models, grouped by how hard the job is. Callers pick a
- * tier, not a slug: exposing the whole registry made the caller anchor on
- * whatever cheap entry it happened to see first (haiku, gpt-5.4-mini) and hand
- * real work to it. Nothing outside this table is ever named to the model, and
- * an unapproved slug is rejected rather than fuzzy-matched into the registry.
- *
- * Candidates degrade in order, so an unauthenticated provider does not break a
- * tier. Edit this table to change what subagents may run on.
+ * The only models subagents may run on. The values are shown in the tool schema
+ * and prompt guidance so callers can choose based on each model's strengths.
  */
-const TIERS: Record<TierName, Tier> = {
-	easy: {
-		blurb: "search, recon, log/diff triage, summarising, mechanical edits",
-		candidates: ["openai-codex/gpt-5.6-luna:high", "opencode-go/deepseek-v4-flash:max"],
-	},
-	medium: {
-		blurb: "scoped implementation, tests, docs, reviewing a known-shape change",
-		candidates: ["openai-codex/gpt-5.6-terra:xhigh", "opencode-go/glm-5.2:max"],
-	},
-	hard: {
-		blurb: "design, cross-cutting refactors, ambiguous debugging, tricky code",
-		candidates: ["openai-codex/gpt-5.6-sol:xhigh", "anthropic/claude-fable-5:high", "opencode-go/kimi-k3:max"],
-	},
-};
+const MODELS = {
+	"openai-codex/gpt-5.6-luna:max": "cheapest and quite capable; has no taste; good for offloading KISS tasks",
+	"opencode-go/deepseek-v4-flash:max": "cheap and capable all rounder; better taste",
+	"opencode-go/kimi-k3:max": "good reviewer; good taste; open for cyber security stuff",
+	"openai-codex/gpt-5.6-sol:xhigh": "good reviewer; bad taste; not open for cyber security stuff",
+} as const;
 
-const TIER_NAMES = Object.keys(TIERS) as TierName[];
-const DEFAULT_TIER: TierName = "medium";
+type ModelName = keyof typeof MODELS;
 
-/** Forgiving synonyms, so a near-miss tier name is not treated as a model slug. */
-const TIER_ALIASES: Record<string, TierName> = {
-	small: "easy",
-	fast: "easy",
-	cheap: "easy",
-	scout: "easy",
-	low: "easy",
-	mid: "medium",
-	normal: "medium",
-	standard: "medium",
-	default: "medium",
-	big: "hard",
-	deep: "hard",
-	large: "hard",
-	smart: "hard",
-	complex: "hard",
-};
+const MODEL_NAMES = Object.keys(MODELS) as ModelName[];
+const DEFAULT_MODEL: ModelName = "openai-codex/gpt-5.6-luna:max";
+
+function modelHelp(): string {
+	return MODEL_NAMES.map((name) => `'${name}' — ${MODELS[name]}`).join("; ");
+}
 
 function splitThinking(raw: string): { base: string; thinking?: string } {
 	const i = raw.lastIndexOf(":");
@@ -407,23 +372,8 @@ function splitThinking(raw: string): { base: string; thinking?: string } {
 	return { base: raw.slice(0, i), thinking: raw.slice(i + 1) };
 }
 
-function tierModels(name: TierName): string[] {
-	return TIERS[name].candidates.map((candidate) => splitThinking(candidate).base);
-}
-
-/** Tier list for descriptions and errors; never leaks the full registry. */
-function tierHelp(): string {
-	// Shows the raw first candidate, thinking suffix included: two tiers may share a
-	// model and differ only in reasoning effort.
-	return TIER_NAMES.map((name) => `'${name}' — ${TIERS[name].blurb} (${TIERS[name].candidates[0]})`).join("; ");
-}
-
-function approvedHelp(): string {
-	return TIER_NAMES.map((name) => `${name}: ${tierModels(name).join(", ")}`).join(" | ");
-}
-
-/** Exact provider/id lookup in the live registry, preserving any thinking suffix. */
-function findAvailable(ctx: ExtensionContext, slug: string): string | undefined {
+/** Exact provider/id lookup in the live registry, preserving the approved effort. */
+function findAvailable(ctx: ExtensionContext, slug: ModelName): string | undefined {
 	const { base, thinking } = splitThinking(slug);
 	const [provider, ...rest] = base.split("/");
 	const id = rest.join("/");
@@ -433,46 +383,18 @@ function findAvailable(ctx: ExtensionContext, slug: string): string | undefined 
 
 type Resolved = { slug: string; error?: undefined } | { slug?: undefined; error: string };
 
-function resolveTier(ctx: ExtensionContext, name: TierName, thinkingOverride?: string): Resolved {
-	for (const candidate of TIERS[name].candidates) {
-		const found = findAvailable(ctx, candidate);
-		if (!found) continue;
-		if (!thinkingOverride) return { slug: found };
-		return { slug: `${splitThinking(found).base}:${thinkingOverride}` };
-	}
-	return {
-		error: `No model for tier '${name}' is available in this session (approved for it: ${TIERS[name].candidates.join(", ")}). Try another tier (${TIER_NAMES.join(", ")}) or edit TIERS in async-agents.ts.`,
-	};
-}
-
 // --- Model resolution / spawning -----------------------------------------------
 
-/** Resolve a tier name (preferred) or an approved slug to "provider/model[:thinking]". */
+/** Resolve an exact approved "provider/model:effort" slug. */
 function resolveModel(ctx: ExtensionContext, slug: string | undefined): Resolved {
-	const raw = slug?.trim();
-	if (!raw) return resolveTier(ctx, DEFAULT_TIER);
-
-	const { base, thinking } = splitThinking(raw);
-	const key = base.toLowerCase();
-	const tier = (TIER_NAMES as string[]).includes(key) ? (key as TierName) : TIER_ALIASES[key];
-	if (tier) return resolveTier(ctx, tier, thinking);
-
-	// Explicit slugs still work, but only for models on the approved list above.
-	const approved = TIER_NAMES.flatMap(tierModels);
-	const match =
-		approved.find((s) => s === base) ??
-		approved.find((s) => s.split("/").slice(1).join("/") === base) ??
-		approved.find((s) => s.toLowerCase().includes(key));
-	if (!match) {
-		return {
-			error: `"${raw}" is not an approved subagent model. Pass a difficulty tier instead — ${tierHelp()}. Approved slugs: ${approvedHelp()}.`,
-		};
+	const raw = slug?.trim() || DEFAULT_MODEL;
+	if (!Object.hasOwn(MODELS, raw)) {
+		return { error: `"${raw}" is not an approved subagent model. Choose one of: ${modelHelp()}.` };
 	}
 
-	const found = findAvailable(ctx, thinking ? `${match}:${thinking}` : match);
-	if (!found) {
-		return { error: `Approved model "${match}" is not available in this session. Pass a tier instead: ${TIER_NAMES.join(", ")}.` };
-	}
+	const model = raw as ModelName;
+	const found = findAvailable(ctx, model);
+	if (!found) return { error: `Approved model "${model}" is not available in this session. Choose another model.` };
 	return { slug: found };
 }
 
@@ -1142,9 +1064,9 @@ const Params = Type.Object({
 	action: ActionSchema,
 	task: Type.Optional(Type.String({ description: "The task for the subagent. Required for 'start'. Be specific and self-contained: the subagent sees none of this conversation." })),
 	model: Type.Optional(
-		StringEnum(TIER_NAMES, {
-			description: `Difficulty tier of the job, which selects the model: ${tierHelp()}. Defaults to '${DEFAULT_TIER}'. Match the tier to the work, not to cost.`,
-			default: DEFAULT_TIER,
+		StringEnum(MODEL_NAMES, {
+			description: `Approved subagent model. ${modelHelp()}. Defaults to '${DEFAULT_MODEL}'.`,
+			default: DEFAULT_MODEL,
 		}),
 	),
 	label: Type.Optional(Type.String({ description: "Short name for this job, shown in the UI. Defaults to a slug of the task." })),
@@ -1238,13 +1160,13 @@ export default function asyncAgents(pi: ExtensionAPI): void {
 			"'start' returns a job id immediately and does NOT block — keep working, then 'wait' to collect results.",
 			"Launch several jobs back-to-back to parallelize, then 'wait' once for all of them.",
 			"Each subagent starts with a blank context: put every needed detail in `task` and ask for a concrete written answer.",
-			`Set \`model\` to the difficulty tier of the job — ${tierHelp()} — not to a model name; the tier picks an approved model.`,
+			`Choose an approved model directly: ${modelHelp()}.`,
 		].join(" "),
-		promptSnippet: "agent: delegate work to background subagents (start/list/check/wait/cancel) with a per-task difficulty tier",
+		promptSnippet: "agent: delegate work to background subagents (start/list/check/wait/cancel) with a choice of approved models",
 		promptGuidelines: [
 			"Use the agent tool for independent, well-scoped work (codebase recon, test runs, doc drafting) so it overlaps with your own work.",
 			"Prefer starting several agents at once and calling wait a single time over interleaving start/wait pairs.",
-			`Choose the agent \`model\` tier by task difficulty (${TIER_NAMES.join(" < ")}); do not downgrade a hard task to a cheaper tier.`,
+			`Choose the agent \`model\` from these approved models based on its strengths: ${modelHelp()}. Omit \`model\` to use '${DEFAULT_MODEL}'.`,
 		],
 		parameters: Params,
 
@@ -1347,7 +1269,7 @@ export default function asyncAgents(pi: ExtensionAPI): void {
 			if (args.action === "start") {
 				const preview = (args.task ?? "").slice(0, 60);
 				return new Text(
-					`${head} ${theme.fg("muted", args.model ?? DEFAULT_TIER)}\n  ${theme.fg("dim", preview)}`,
+					`${head} ${theme.fg("muted", args.model ?? DEFAULT_MODEL)}\n  ${theme.fg("dim", preview)}`,
 					0,
 					0,
 				);
