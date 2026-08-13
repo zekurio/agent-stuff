@@ -16,8 +16,8 @@ Nix store, so Pi only loads a local package at runtime.
 ## Contents
 
 - Extensions for async agents, Git workflows, model effort, priority routing,
-  Firecrawl search, image anchors, Q&A, side questions, sleep prevention,
-  Anthropic authentication, and direnv.
+  Firecrawl search, image anchors, Q&A, side questions, sleep prevention, and
+  direnv.
 - `rift` and `zed` agent skills.
 - Catppuccin Frappé theme.
 
