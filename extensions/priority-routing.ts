@@ -8,6 +8,10 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { getCapabilities, hyperlink, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import {
+	gitFlowStateAppliesToCwd,
+	resolveFooterGitBranch,
+} from "./lib/footer-git-branch.ts";
+import {
 	GIT_FLOW_REFRESH_EVENT,
 	GIT_FLOW_STATE_EVENT,
 	type GitFlowFooterState,
@@ -156,11 +160,6 @@ function columns(left: string, right: string, width: number, ellipsis = "..."): 
 	return fittedLeft + padding + fittedRight;
 }
 
-function isInside(root: string, path: string): boolean {
-	const fromRoot = relative(resolve(root), resolve(path));
-	return fromRoot === "" || (fromRoot !== ".." && !fromRoot.startsWith(`..${sep}`) && !isAbsolute(fromRoot));
-}
-
 function terminalLink(label: string, url: string): string {
 	return getCapabilities().hyperlinks ? hyperlink(label, url) : `${label} (${url})`;
 }
@@ -178,7 +177,7 @@ function gitFlowDetails(
 	cwd: string,
 	branch: string | null,
 ): string[] {
-	if (!state || state.branch !== branch || !isInside(state.root, cwd)) return [];
+	if (!gitFlowStateAppliesToCwd(state, cwd) || state.branch !== branch) return [];
 
 	const parts: string[] = [];
 	if (state.gitStatus) parts.push(theme.fg("error", state.gitStatus));
@@ -270,7 +269,7 @@ export default function priorityRouting(pi: ExtensionAPI): void {
 
 					const extensionStatuses = footerData.getExtensionStatuses();
 					const cwd = formatCwd(ctx.cwd, process.env.HOME || process.env.USERPROFILE);
-					const branch = footerData.getGitBranch();
+					const branch = resolveFooterGitBranch(gitFlowState, ctx.cwd, footerData.getGitBranch());
 					const gitAndSessionParts = [theme.fg("dim", cwd)];
 					if (branch) gitAndSessionParts.push(theme.fg("dim", branch));
 					gitAndSessionParts.push(...gitFlowDetails(theme, gitFlowState, ctx.cwd, branch));
