@@ -10,8 +10,57 @@ pi install git:github.com/zekurio/agent-stuff
 ```
 
 Pi installs the package dependencies with npm. My Nix configuration instead
-pins this repository as a flake input and materializes the dependencies in the
-Nix store, so Pi only loads a local package at runtime.
+uses this repository's flake to materialize the dependencies in the Nix store,
+so Pi only loads a local package at runtime.
+
+### Nix / Home Manager
+
+Add the flake as an input and import its Home Manager module:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    agent-stuff = {
+      url = "github:zekurio/agent-stuff";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = inputs: {
+    homeConfigurations.alice =
+      inputs.home-manager.lib.homeManagerConfiguration {
+        pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
+        modules = [
+          inputs.agent-stuff.homeManagerModules.default
+          ./home.nix
+        ];
+      };
+  };
+}
+```
+
+Then enable it in your Home Manager configuration:
+
+```nix
+{
+  programs.agent-stuff.enable = true;
+}
+```
+
+The module links the complete package at
+`~/.pi/agent/packages/agent-stuff` and registers it with Pi as
+`./packages/agent-stuff`. It updates only that entry in Pi's mutable
+`settings.json`; model choices and other installed packages are preserved.
+
+The built package is also exposed as `packages.<system>.default` (and
+`packages.<system>.agent-stuff`), and `overlays.default` adds it to nixpkgs as
+`pkgs.agent-stuff`.
 
 ## Contents
 
