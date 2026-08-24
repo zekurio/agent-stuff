@@ -35,6 +35,7 @@ import { getMarkdownTheme } from "@earendil-works/pi-coding-agent";
 import type { Component, TUI } from "@earendil-works/pi-tui";
 import { Container, Markdown, Spacer, Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { buildModelChoices, chooseDefaultModel, type ModelChoice } from "./lib/async-agent-models.ts";
 
 const MAX_CONCURRENT = 6;
 const OUTPUT_CAP = 48 * 1024;
@@ -344,58 +345,31 @@ function ingest(job: Job, event: any): void {
 	notifyChanged();
 }
 
-// --- Approved models -----------------------------------------------------------
+// --- Session-scoped models ----------------------------------------------------
 
-/**
- * The only models subagents may run on. The values are shown in the tool schema
- * and prompt guidance so callers can choose based on each model's strengths.
- */
-const MODELS = {
-	"openai-codex/gpt-5.6-luna:max": "cheapest and quite capable; has no taste; good for offloading KISS tasks",
-	"opencode-go/deepseek-v4-flash:max": "cheap and capable all rounder; better taste",
-	"opencode-go/kimi-k3:max": "good reviewer; good taste; open for cyber security stuff",
-	"openai-codex/gpt-5.6-sol:xhigh": "good reviewer; bad taste; not open for cyber security stuff",
-} as const;
-
-type ModelName = keyof typeof MODELS;
-
-const MODEL_NAMES = Object.keys(MODELS) as ModelName[];
-const DEFAULT_MODEL: ModelName = "openai-codex/gpt-5.6-luna:max";
-
-function modelHelp(): string {
-	return MODEL_NAMES.map((name) => `'${name}' — ${MODELS[name]}`).join("; ");
+/** Mirror Pi's explicit scope, or all available models when no scope exists. */
+function modelChoices(ctx: ExtensionContext): ModelChoice[] {
+	return buildModelChoices(ctx.scopedModels, ctx.modelRegistry.getAvailable());
 }
 
-function splitThinking(raw: string): { base: string; thinking?: string } {
-	const i = raw.lastIndexOf(":");
-	if (i <= 0 || i < raw.indexOf("/")) return { base: raw };
-	return { base: raw.slice(0, i), thinking: raw.slice(i + 1) };
-}
-
-/** Exact provider/id lookup in the live registry, preserving the approved effort. */
-function findAvailable(ctx: ExtensionContext, slug: ModelName): string | undefined {
-	const { base, thinking } = splitThinking(slug);
-	const [provider, ...rest] = base.split("/");
-	const id = rest.join("/");
-	const hit = ctx.modelRegistry.getAvailable().find((m) => m.provider === provider && m.id === id);
-	return hit ? `${hit.provider}/${hit.id}${thinking ? `:${thinking}` : ""}` : undefined;
+/** Prefer the current session model, then preserve Pi's configured scope order. */
+function defaultModel(ctx: ExtensionContext, choices: ModelChoice[]): string | undefined {
+	return chooseDefaultModel(ctx.model, choices);
 }
 
 type Resolved = { slug: string; error?: undefined } | { slug?: undefined; error: string };
 
 // --- Model resolution / spawning -----------------------------------------------
 
-/** Resolve an exact approved "provider/model:effort" slug. */
+/** Resolve an exact model from the live session scope. */
 function resolveModel(ctx: ExtensionContext, slug: string | undefined): Resolved {
-	const raw = slug?.trim() || DEFAULT_MODEL;
-	if (!Object.hasOwn(MODELS, raw)) {
-		return { error: `"${raw}" is not an approved subagent model. Choose one of: ${modelHelp()}.` };
+	const choices = modelChoices(ctx);
+	const raw = slug?.trim() || defaultModel(ctx, choices);
+	if (!raw) return { error: "No models are available in this session." };
+	if (!choices.some((choice) => choice.slug === raw)) {
+		return { error: `"${raw}" is not in this session's model scope. Choose one of: ${choices.map((choice) => choice.slug).join(", ") || "none"}.` };
 	}
-
-	const model = raw as ModelName;
-	const found = findAvailable(ctx, model);
-	if (!found) return { error: `Approved model "${model}" is not available in this session. Choose another model.` };
-	return { slug: found };
+	return { slug: raw };
 }
 
 /** Mirrors the bundled subagent example so this works from a compiled binary too. */
@@ -1060,23 +1034,24 @@ const ActionSchema = StringEnum(["start", "list", "check", "wait", "cancel"] as 
 	description: "start: launch a background agent. list: all jobs. check: snapshot. wait: block for results. cancel: kill.",
 });
 
-const Params = Type.Object({
-	action: ActionSchema,
-	task: Type.Optional(Type.String({ description: "The task for the subagent. Required for 'start'. Be specific and self-contained: the subagent sees none of this conversation." })),
-	model: Type.Optional(
-		StringEnum(MODEL_NAMES, {
-			description: `Approved subagent model. ${modelHelp()}. Defaults to '${DEFAULT_MODEL}'.`,
-			default: DEFAULT_MODEL,
-		}),
-	),
-	label: Type.Optional(Type.String({ description: "Short name for this job, shown in the UI. Defaults to a slug of the task." })),
-	cwd: Type.Optional(Type.String({ description: "Working directory for the subagent. Defaults to the current directory." })),
-	tools: Type.Optional(Type.Array(Type.String(), { description: "Allowlist of tool names, e.g. ['read','grep','find','ls']. Omit for all default tools." })),
-	system: Type.Optional(Type.String({ description: "Extra system prompt text appended for this subagent only." })),
-	id: Type.Optional(Type.String({ description: "Job id for 'check' and 'cancel'." })),
-	ids: Type.Optional(Type.Array(Type.String(), { description: "Job ids for 'wait'. Omit to wait for every running job." })),
-	timeout: Type.Optional(Type.Number({ description: `Seconds to wait before giving up. Default ${DEFAULT_WAIT_SECONDS}.` })),
-});
+function paramsForModels(modelNames: string[]) {
+	const modelSchema = modelNames.length
+		? StringEnum(modelNames, { description: "Subagent model from the current Pi session scope. Omit to use the current session model." })
+		: Type.String({ description: "Subagent model. No models are currently available." });
+
+	return Type.Object({
+		action: ActionSchema,
+		task: Type.Optional(Type.String({ description: "The task for the subagent. Required for 'start'. Be specific and self-contained: the subagent sees none of this conversation." })),
+		model: Type.Optional(modelSchema),
+		label: Type.Optional(Type.String({ description: "Short name for this job, shown in the UI. Defaults to a slug of the task." })),
+		cwd: Type.Optional(Type.String({ description: "Working directory for the subagent. Defaults to the current directory." })),
+		tools: Type.Optional(Type.Array(Type.String(), { description: "Allowlist of tool names, e.g. ['read','grep','find','ls']. Omit for all default tools." })),
+		system: Type.Optional(Type.String({ description: "Extra system prompt text appended for this subagent only." })),
+		id: Type.Optional(Type.String({ description: "Job id for 'check' and 'cancel'." })),
+		ids: Type.Optional(Type.Array(Type.String(), { description: "Job ids for 'wait'. Omit to wait for every running job." })),
+		timeout: Type.Optional(Type.Number({ description: `Seconds to wait before giving up. Default ${DEFAULT_WAIT_SECONDS}.` })),
+	});
+}
 
 interface Details {
 	action: string;
@@ -1123,6 +1098,7 @@ function fail(message: string): never {
 export default function asyncAgents(pi: ExtensionAPI): void {
 	let unbindHotkey: (() => void) | undefined;
 	let overlayOpen = false;
+	let registeredModelSignature: string | undefined;
 
 	const openUI = async (ctx: ExtensionCommandContext | ExtensionContext, id?: string) => {
 		if (overlayOpen) return;
@@ -1142,6 +1118,7 @@ export default function asyncAgents(pi: ExtensionAPI): void {
 		if (event.reason !== "startup" && event.reason !== "reload") resetJobs();
 		runtime.sessionId = ctx.sessionManager.getSessionId();
 		runtime.uiCtx = ctx;
+		registerAgentTool(ctx);
 		if (!ctx.hasUI || ctx.mode !== "tui") return;
 		updateStatus();
 		// ctrl+g mirrors /agents without stealing an existing pi binding.
@@ -1152,168 +1129,178 @@ export default function asyncAgents(pi: ExtensionAPI): void {
 		});
 	});
 
-	pi.registerTool({
-		name: "agent",
-		label: "Async Agent",
-		description: [
-			"Run subagents in background `pi` processes with isolated context windows.",
-			"'start' returns a job id immediately and does NOT block — keep working, then 'wait' to collect results.",
-			"Launch several jobs back-to-back to parallelize, then 'wait' once for all of them.",
-			"Each subagent starts with a blank context: put every needed detail in `task` and ask for a concrete written answer.",
-			`Choose an approved model directly: ${modelHelp()}.`,
-		].join(" "),
-		promptSnippet: "agent: delegate work to background subagents (start/list/check/wait/cancel) with a choice of approved models",
-		promptGuidelines: [
-			"Use the agent tool for independent, well-scoped work (codebase recon, test runs, doc drafting) so it overlaps with your own work.",
-			"Prefer starting several agents at once and calling wait a single time over interleaving start/wait pairs.",
-			`Choose the agent \`model\` from these approved models based on its strengths: ${modelHelp()}. Omit \`model\` to use '${DEFAULT_MODEL}'.`,
-		],
-		parameters: Params,
+	function registerAgentTool(ctx: ExtensionContext): void {
+		const modelNames = modelChoices(ctx).map((choice) => choice.slug);
+		const signature = JSON.stringify(modelNames);
+		if (signature === registeredModelSignature) return;
+		registeredModelSignature = signature;
 
-		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
-			const action = params.action;
+		pi.registerTool({
+			name: "agent",
+			label: "Async Agent",
+			description: [
+				"Run subagents in background `pi` processes with isolated context windows.",
+				"'start' returns a job id immediately and does NOT block — keep working, then 'wait' to collect results.",
+				"Launch several jobs back-to-back to parallelize, then 'wait' once for all of them.",
+				"Each subagent starts with a blank context: put every needed detail in `task` and ask for a concrete written answer.",
+				"The model choices mirror the current Pi session's scoped models.",
+			].join(" "),
+			promptSnippet: "agent: delegate work to background subagents (start/list/check/wait/cancel) using session-scoped models",
+			promptGuidelines: [
+				"Use the agent tool for independent, well-scoped work (codebase recon, test runs, doc drafting) so it overlaps with your own work.",
+				"Prefer starting several agents at once and calling wait a single time over interleaving start/wait pairs.",
+				"Choose the agent `model` from the session-scoped enum. Omit `model` to use the current session model.",
+			],
+			parameters: paramsForModels(modelNames),
 
-			if (action === "start") {
-				if (!params.task?.trim()) fail("`task` is required for action 'start'.");
+			async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+				const action = params.action;
 
-				const running = [...jobs.values()].filter((job) => job.status === "running");
-				if (running.length >= MAX_CONCURRENT) {
-					fail(
-						`Too many running agents (${running.length}/${MAX_CONCURRENT}): ${running.map((job) => job.id).join(", ")}. Wait for or cancel some first.`,
+				if (action === "start") {
+					if (!params.task?.trim()) fail("`task` is required for action 'start'.");
+
+					const running = [...jobs.values()].filter((job) => job.status === "running");
+					if (running.length >= MAX_CONCURRENT) {
+						fail(
+							`Too many running agents (${running.length}/${MAX_CONCURRENT}): ${running.map((job) => job.id).join(", ")}. Wait for or cancel some first.`,
+						);
+					}
+
+					const resolved = resolveModel(ctx, params.model);
+					if (resolved.error) fail(resolved.error);
+
+					const cwd = params.cwd ? path.resolve(ctx.cwd, params.cwd) : ctx.cwd;
+					if (!fs.existsSync(cwd)) fail(`cwd does not exist: ${cwd}`);
+
+					const label =
+						params.label?.trim() ||
+						params.task.trim().split(/\s+/).slice(0, 5).join(" ").slice(0, 48).replace(/[^\w\s.-]/g, "");
+
+					const job = launch(ctx, {
+						task: params.task,
+						modelSlug: resolved.slug as string,
+						label: label || "task",
+						cwd,
+						tools: params.tools,
+						system: params.system,
+					});
+
+					return text(
+						`Started ${job.id} (${job.label}) on ${job.model}. Running in the background — continue with other work, then call agent{action:"wait"} to collect the result.`,
+						toDetails(action, [job]),
 					);
 				}
 
-				const resolved = resolveModel(ctx, params.model);
-				if (resolved.error) fail(resolved.error);
-
-				const cwd = params.cwd ? path.resolve(ctx.cwd, params.cwd) : ctx.cwd;
-				if (!fs.existsSync(cwd)) fail(`cwd does not exist: ${cwd}`);
-
-				const label =
-					params.label?.trim() ||
-					params.task.trim().split(/\s+/).slice(0, 5).join(" ").slice(0, 48).replace(/[^\w\s.-]/g, "");
-
-				const job = launch(ctx, {
-					task: params.task,
-					modelSlug: resolved.slug as string,
-					label: label || "task",
-					cwd,
-					tools: params.tools,
-					system: params.system,
-				});
-
-				return text(
-					`Started ${job.id} (${job.label}) on ${job.model}. Running in the background — continue with other work, then call agent{action:"wait"} to collect the result.`,
-					toDetails(action, [job]),
-				);
-			}
-
-			if (action === "list") {
-				const all = [...jobs.values()];
-				if (all.length === 0) return text("No agents started yet.", toDetails(action, []));
-				return text(all.map(jobSummaryLine).join("\n"), toDetails(action, all));
-			}
-
-			if (action === "check") {
-				if (!params.id) fail("`id` is required for action 'check'.");
-				const job = jobs.get(params.id);
-				if (!job) fail(`Unknown job id "${params.id}". Known ids: ${[...jobs.keys()].join(", ") || "none"}.`);
-				job.collected = job.status !== "running";
-				const body =
-					job.status === "running"
-						? `${jobSummaryLine(job)}\n${job.toolCalls.length} tool calls so far (now: ${activityLine(job)}). Still running.`
-						: `${jobSummaryLine(job)}\n\n${jobOutput(job)}`;
-				return text(body, toDetails(action, [job]));
-			}
-
-			if (action === "cancel") {
-				if (!params.id) fail("`id` is required for action 'cancel'.");
-				const job = jobs.get(params.id);
-				if (!job) fail(`Unknown job id "${params.id}". Known ids: ${[...jobs.keys()].join(", ") || "none"}.`);
-				if (job.status !== "running") return text(`${job.id} already ${job.status}.`, toDetails(action, [job]));
-				killJob(job);
-				await job.promise;
-				updateStatus();
-				return text(`Canceled ${job.id}.`, toDetails(action, [job]));
-			}
-
-			// action === "wait"
-			const targets = params.ids?.length
-				? params.ids.map((id) => jobs.get(id)).filter((job): job is Job => Boolean(job))
-				: [...jobs.values()].filter((job) => job.status === "running" || !job.collected);
-
-			if (targets.length === 0) return text("Nothing to wait for.", toDetails(action, []));
-
-			const timeoutMs = Math.max(1, params.timeout ?? DEFAULT_WAIT_SECONDS) * 1000;
-			const deadline = Date.now() + timeoutMs;
-
-			while (targets.some((job) => job.status === "running")) {
-				if (signal?.aborted) break;
-				if (Date.now() > deadline) break;
-				await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-			}
-
-			const stillRunning = targets.filter((job) => job.status === "running");
-			for (const job of targets) if (job.status !== "running") job.collected = true;
-
-			const sections = targets.map((job) => `### ${statusIcon(job.status)} ${job.id} — ${job.label} (${job.status})\n\n${jobOutput(job)}`);
-			const header = stillRunning.length
-				? `${targets.length - stillRunning.length}/${targets.length} finished; ${stillRunning.map((job) => job.id).join(", ")} still running (waited ${Math.round(timeoutMs / 1000)}s).`
-				: `All ${targets.length} finished.`;
-
-			return text(`${header}\n\n${sections.join("\n\n---\n\n")}`, toDetails(action, targets));
-		},
-
-		renderCall(args, theme) {
-			const head = theme.fg("toolTitle", theme.bold("agent ")) + theme.fg("accent", args.action ?? "...");
-			if (args.action === "start") {
-				const preview = (args.task ?? "").slice(0, 60);
-				return new Text(
-					`${head} ${theme.fg("muted", args.model ?? DEFAULT_MODEL)}\n  ${theme.fg("dim", preview)}`,
-					0,
-					0,
-				);
-			}
-			const target = args.id ?? args.ids?.join(", ") ?? "all";
-			return new Text(`${head} ${theme.fg("dim", target)}`, 0, 0);
-		},
-
-		renderResult(result, { expanded }, theme) {
-			const details = result.details as Details | undefined;
-			if (!details || details.jobs.length === 0) {
-				const first = result.content[0];
-				return new Text(first?.type === "text" ? first.text : "(no output)", 0, 0);
-			}
-
-			const container = new Container();
-			for (const job of details.jobs) {
-				const icon = theme.fg(statusColor(job.status), statusIcon(job.status));
-				container.addChild(
-					new Text(
-						`${icon} ${theme.fg("toolTitle", theme.bold(job.id))} ${theme.fg("accent", job.label)} ${theme.fg("muted", job.model)}`,
-						0,
-						0,
-					),
-				);
-				if (expanded) {
-					container.addChild(new Text(theme.fg("dim", `task: ${job.task}`), 0, 0));
-					for (const call of job.toolCalls.slice(-20)) {
-						container.addChild(new Text(theme.fg("muted", `→ ${call.name}`), 0, 0));
-					}
-					if (job.status !== "running") {
-						container.addChild(new Spacer(1));
-						container.addChild(new Markdown(job.output.trim(), 0, 0, getMarkdownTheme()));
-					}
-				} else if (job.status !== "running") {
-					const preview = job.output.split("\n").slice(0, 3).join("\n");
-					container.addChild(new Text(theme.fg("toolOutput", preview), 0, 0));
+				if (action === "list") {
+					const all = [...jobs.values()];
+					if (all.length === 0) return text("No agents started yet.", toDetails(action, []));
+					return text(all.map(jobSummaryLine).join("\n"), toDetails(action, all));
 				}
-				container.addChild(new Text(theme.fg("dim", `${job.usage}  ${theme.fg("dim", "(/agents for live view)")}`), 0, 0));
-			}
-			if (!expanded) container.addChild(new Text(theme.fg("muted", "(Ctrl+O to expand)"), 0, 0));
-			return container;
-		},
-	});
+
+				if (action === "check") {
+					if (!params.id) fail("`id` is required for action 'check'.");
+					const job = jobs.get(params.id);
+					if (!job) fail(`Unknown job id "${params.id}". Known ids: ${[...jobs.keys()].join(", ") || "none"}.`);
+					job.collected = job.status !== "running";
+					const body =
+						job.status === "running"
+							? `${jobSummaryLine(job)}\n${job.toolCalls.length} tool calls so far (now: ${activityLine(job)}). Still running.`
+							: `${jobSummaryLine(job)}\n\n${jobOutput(job)}`;
+					return text(body, toDetails(action, [job]));
+				}
+
+				if (action === "cancel") {
+					if (!params.id) fail("`id` is required for action 'cancel'.");
+					const job = jobs.get(params.id);
+					if (!job) fail(`Unknown job id "${params.id}". Known ids: ${[...jobs.keys()].join(", ") || "none"}.`);
+					if (job.status !== "running") return text(`${job.id} already ${job.status}.`, toDetails(action, [job]));
+					killJob(job);
+					await job.promise;
+					updateStatus();
+					return text(`Canceled ${job.id}.`, toDetails(action, [job]));
+				}
+
+				// action === "wait"
+				const targets = params.ids?.length
+					? params.ids.map((id) => jobs.get(id)).filter((job): job is Job => Boolean(job))
+					: [...jobs.values()].filter((job) => job.status === "running" || !job.collected);
+
+				if (targets.length === 0) return text("Nothing to wait for.", toDetails(action, []));
+
+				const timeoutMs = Math.max(1, params.timeout ?? DEFAULT_WAIT_SECONDS) * 1000;
+				const deadline = Date.now() + timeoutMs;
+
+				while (targets.some((job) => job.status === "running")) {
+					if (signal?.aborted) break;
+					if (Date.now() > deadline) break;
+					await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+				}
+
+				const stillRunning = targets.filter((job) => job.status === "running");
+				for (const job of targets) if (job.status !== "running") job.collected = true;
+
+				const sections = targets.map((job) => `### ${statusIcon(job.status)} ${job.id} — ${job.label} (${job.status})\n\n${jobOutput(job)}`);
+				const header = stillRunning.length
+					? `${targets.length - stillRunning.length}/${targets.length} finished; ${stillRunning.map((job) => job.id).join(", ")} still running (waited ${Math.round(timeoutMs / 1000)}s).`
+					: `All ${targets.length} finished.`;
+
+				return text(`${header}\n\n${sections.join("\n\n---\n\n")}`, toDetails(action, targets));
+			},
+
+			renderCall(args, theme) {
+				const head = theme.fg("toolTitle", theme.bold("agent ")) + theme.fg("accent", args.action ?? "...");
+				if (args.action === "start") {
+					const preview = (args.task ?? "").slice(0, 60);
+					return new Text(
+						`${head} ${theme.fg("muted", args.model ?? "current session model")}\n  ${theme.fg("dim", preview)}`,
+						0,
+						0,
+					);
+				}
+				const target = args.id ?? args.ids?.join(", ") ?? "all";
+				return new Text(`${head} ${theme.fg("dim", target)}`, 0, 0);
+			},
+
+			renderResult(result, { expanded }, theme) {
+				const details = result.details as Details | undefined;
+				if (!details || details.jobs.length === 0) {
+					const first = result.content[0];
+					return new Text(first?.type === "text" ? first.text : "(no output)", 0, 0);
+				}
+
+				const container = new Container();
+				for (const job of details.jobs) {
+					const icon = theme.fg(statusColor(job.status), statusIcon(job.status));
+					container.addChild(
+						new Text(
+							`${icon} ${theme.fg("toolTitle", theme.bold(job.id))} ${theme.fg("accent", job.label)} ${theme.fg("muted", job.model)}`,
+							0,
+							0,
+						),
+					);
+					if (expanded) {
+						container.addChild(new Text(theme.fg("dim", `task: ${job.task}`), 0, 0));
+						for (const call of job.toolCalls.slice(-20)) {
+							container.addChild(new Text(theme.fg("muted", `→ ${call.name}`), 0, 0));
+						}
+						if (job.status !== "running") {
+							container.addChild(new Spacer(1));
+							container.addChild(new Markdown(job.output.trim(), 0, 0, getMarkdownTheme()));
+						}
+					} else if (job.status !== "running") {
+						const preview = job.output.split("\n").slice(0, 3).join("\n");
+						container.addChild(new Text(theme.fg("toolOutput", preview), 0, 0));
+					}
+					container.addChild(new Text(theme.fg("dim", `${job.usage}  ${theme.fg("dim", "(/agents for live view)")}`), 0, 0));
+				}
+				if (!expanded) container.addChild(new Text(theme.fg("muted", "(Ctrl+O to expand)"), 0, 0));
+				return container;
+			},
+		});
+	}
+
+	// `/scoped-models` can change the scope without starting a new session.
+	pi.on("before_agent_start", (_event, ctx) => registerAgentTool(ctx));
 
 	pi.registerCommand("agents", {
 		description: "Open the background subagents overlay (/agents cancel <id> to kill one)",
