@@ -8,7 +8,7 @@ buildNpmPackage {
 
   src = lib.cleanSource ../.;
 
-  npmDepsHash = "sha256-V46FzcTugJ3i0OH91dwWBUheIL6xi/+z0GIttec7Xtw=";
+  npmDepsHash = "sha256-fZYDoufqmgCFO62p/0tkYtGyU1niKJ0C1TLy7c9vK1s=";
   npmInstallFlags = ["--ignore-scripts"];
   dontNpmBuild = true;
   doCheck = false;
@@ -35,7 +35,7 @@ buildNpmPackage {
   meta = {
     description = "Extensions, skills, and themes for Pi Coding Agent";
     homepage = "https://github.com/zekurio/agent-stuff";
-    license = lib.licenses.asl20;
+    license = lib.licenses.mit;
     platforms = lib.platforms.unix;
   };
 }

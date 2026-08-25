@@ -7,6 +7,10 @@
   cfg = config.programs.agent-stuff;
   packageSource = "./packages/agent-stuff";
   agentDirectory = "${config.home.homeDirectory}/.pi/agent";
+  globalSkills = lib.mapAttrs' (name: _:
+    lib.nameValuePair ".agents/skills/${name}" {
+      source = "${cfg.package}/skills/${name}";
+    }) (lib.filterAttrs (_: type: type == "directory") (builtins.readDir ../skills));
 in {
   options.programs.agent-stuff = {
     enable = lib.mkEnableOption "the agent-stuff Pi package";
@@ -25,10 +29,15 @@ in {
     # launches can observe a stale or partially written transform there.
     home.sessionVariables.JITI_FS_CACHE = "false";
 
-    home.file.".pi/agent/packages/agent-stuff".source = cfg.package;
+    home.file =
+      {
+        ".pi/agent/packages/agent-stuff".source = cfg.package;
+      }
+      // globalSkills;
 
     # Pi mutates settings.json, so keep it writable and only reconcile this
-    # package entry. Preserve model choices and any other installed packages.
+    # package entry. Skills load from the shared directory above instead of
+    # loading a duplicate copy from the Pi package.
     home.activation.agentStuff = lib.hm.dag.entryAfter ["linkGeneration"] ''
       settings=${lib.escapeShellArg "${agentDirectory}/settings.json"}
       if [[ -v DRY_RUN ]]; then
@@ -50,7 +59,7 @@ in {
         temporary="$settings.tmp"
         ${lib.getExe pkgs.jq} \
           --arg source ${lib.escapeShellArg packageSource} \
-          '.packages = (((if (.packages | type) == "array" then .packages else [] end) | map(select((if type == "object" then .source else . end) != $source))) + [$source])' \
+          '.packages = (((if (.packages | type) == "array" then .packages else [] end) | map(select((if type == "object" then .source else . end) != $source))) + [{source: $source, skills: []}])' \
           "$current" > "$temporary"
         mv "$temporary" "$settings"
       fi
