@@ -67,7 +67,7 @@ The built package is also exposed as `packages.<system>.default` (and
 - Extensions for async agents, Git workflows, model effort, priority routing,
   Firecrawl search, image anchors, Q&A, side questions, sleep prevention, and
   direnv.
-- `rift` and `zed` agent skills.
+- `bro`, `how`, `rift`, `teach`, `unslop`, `why`, and `zed` agent skills.
 - Catppuccin Frappé theme.
 
 `effort.json` and `priority-routing.json` are mutable, extension-owned state and
@@ -77,7 +77,10 @@ are intentionally not part of the package. `git-flow.ts` defaults to
 
 Firecrawl search requires `FIRECRAWL_API_KEY`. The `rift` skill requires
 [rift](https://github.com/anomalyco/rift), and the `zed` skill requires the Zed
-CLI.
+CLI. The `how`, `teach`, and `why` workflows use this package's async `agent`
+extension; keep `extensions/async-agents.ts` enabled when using them. The `why`
+skill uses `gh` when it is installed and authenticated, and can query other
+evidence sources through any matching Pi integrations available in the session.
 
 ## License
 
