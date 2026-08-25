@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Personal extensions, skills, and themes for Pi Coding Agent",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "keywords": [
     "pi-package"
   ],
