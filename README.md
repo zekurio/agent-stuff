@@ -20,7 +20,7 @@ Pi clones the repository and installs its npm dependencies.
 | [`answer`](extensions/answer.ts) | Pulls questions from the last assistant message into an interactive Q&A. Run it with `/answer` or `ctrl+.`. |
 | [`async-agents`](extensions/async-agents.ts) | Adds the `agent` tool for background subagents and `/agents` for checking or cancelling jobs. |
 | [`btw`](extensions/btw.ts) | Opens a side conversation without adding it to the main thread. |
-| [`effort`](extensions/effort.ts) | Changes the current model's reasoning effort with `/effort`. |
+| [`effort`](extensions/effort.ts) | Remembers the reasoning effort for each model. |
 | [`firecrawl-search`](extensions/firecrawl-search) | Adds `search`, `scrape`, and `crawl` tools backed by Firecrawl. |
 | [`git-flow`](extensions/git-flow.ts) | Adds `/commit`, `/push`, and `/pr`. It reads the repository's conventions and pull request template. |
 | [`image-anchors`](extensions/image-anchors.ts) | Replaces pasted image paths with short labels in the editor, then restores them on submit. |
