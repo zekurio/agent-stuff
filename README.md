@@ -17,7 +17,6 @@ Pi clones the repository and installs its npm dependencies.
 
 | Extension | What it does |
 | --- | --- |
-| [`async-agents`](extensions/async-agents.ts) | Adds the `agent` tool for background subagents and `/agents` for checking or cancelling jobs. |
 | [`firecrawl-search`](extensions/firecrawl-search) | Adds `search`, `scrape`, and `crawl` tools backed by Firecrawl. |
 | [`image-anchors`](extensions/image-anchors.ts) | Replaces pasted image paths with short labels in the editor, then restores them on submit. |
 | [`no-sleep`](extensions/no-sleep.ts) | Keeps macOS awake while Pi's agent is running. |

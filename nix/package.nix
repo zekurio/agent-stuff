@@ -8,7 +8,7 @@ buildNpmPackage {
 
   src = lib.cleanSource ../.;
 
-  npmDepsHash = "sha256-fZYDoufqmgCFO62p/0tkYtGyU1niKJ0C1TLy7c9vK1s=";
+  npmDepsHash = "sha256-lOfu0vJQVqAeX+wAslh3sP0Xzt7D1Ov9c0XB20Rx3Hk=";
   npmInstallFlags = ["--ignore-scripts"];
   dontNpmBuild = true;
   doCheck = false;
