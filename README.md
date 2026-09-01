@@ -17,12 +17,8 @@ Pi clones the repository and installs its npm dependencies.
 
 | Extension | What it does |
 | --- | --- |
-| [`answer`](extensions/answer.ts) | Pulls questions from the last assistant message into an interactive Q&A. Run it with `/answer` or `ctrl+.`. |
 | [`async-agents`](extensions/async-agents.ts) | Adds the `agent` tool for background subagents and `/agents` for checking or cancelling jobs. |
-| [`btw`](extensions/btw.ts) | Opens a side conversation without adding it to the main thread. |
-| [`effort`](extensions/effort.ts) | Remembers the reasoning effort for each model. |
 | [`firecrawl-search`](extensions/firecrawl-search) | Adds `search`, `scrape`, and `crawl` tools backed by Firecrawl. |
-| [`git-flow`](extensions/git-flow.ts) | Adds `/commit`, `/push`, and `/pr`. It reads the repository's conventions and pull request template. |
 | [`image-anchors`](extensions/image-anchors.ts) | Replaces pasted image paths with short labels in the editor, then restores them on submit. |
 | [`no-sleep`](extensions/no-sleep.ts) | Keeps macOS awake while Pi's agent is running. |
 | [`priority-routing`](extensions/priority-routing.ts) | Toggles provider priority routing with `/priority` or `/fast`. |
@@ -45,12 +41,8 @@ The [Catppuccin Frappé](themes/catppuccin-frappe.json) theme is included too.
 Firecrawl needs `FIRECRAWL_API_KEY`. The `rift` skill needs the `rift` command,
 and the `zed` skill needs the Zed CLI.
 
-`git-flow.ts` uses `openai-codex/gpt-5.6-luna` by default. Set `PI_GIT_MODEL`,
-add `.pi/git-flow.json` to a project, or add `~/.pi/agent/git-flow.json` to
-change it.
-
-The effort and priority-routing extensions write their state to `effort.json`
-and `priority-routing.json`. Git ignores both files.
+The priority-routing extension writes its state to `priority-routing.json`.
+Git ignores this file.
 
 ## Nix and Home Manager
 
