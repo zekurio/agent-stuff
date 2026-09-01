@@ -27,7 +27,8 @@
       "./extensions/image-anchors.ts",
       "./extensions/no-sleep.ts",
       "./extensions/priority-routing.ts",
-      "./extensions/pi-direnv/index.ts"
+      "./extensions/pi-direnv/index.ts",
+      "./extensions/sol-long-context.ts"
     ],
     "skills": [
       "./skills"
