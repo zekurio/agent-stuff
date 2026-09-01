@@ -24,12 +24,8 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/answer.ts",
       "./extensions/async-agents.ts",
-      "./extensions/btw.ts",
-      "./extensions/effort.ts",
       "./extensions/firecrawl-search/index.ts",
-      "./extensions/git-flow.ts",
       "./extensions/image-anchors.ts",
       "./extensions/no-sleep.ts",
       "./extensions/priority-routing.ts",
