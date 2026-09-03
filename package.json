@@ -11,6 +11,10 @@
   "engines": {
     "node": ">=22.19.0"
   },
+  "scripts": {
+    "skills:check": "node scripts/update-skills.mjs --check",
+    "skills:update": "node scripts/update-skills.mjs"
+  },
   "dependencies": {
     "effect": "4.0.0-beta.101",
     "firecrawl": "4.30.1"

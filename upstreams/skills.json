@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "skills": {
+    "frontend-design": {
+      "repository": "https://github.com/anthropics/skills.git",
+      "ref": "main",
+      "revision": "41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f",
+      "source": "skills/frontend-design"
+    },
+    "bro": {
+      "repository": "https://github.com/cursor/plugins.git",
+      "ref": "main",
+      "revision": "7314f723a487ec406b6369fe5865ba034cfed166",
+      "source": "pstack/skills/bro",
+      "copies": [
+        {
+          "source": "pstack/LICENSE",
+          "destination": "LICENSE.txt"
+        }
+      ]
+    },
+    "unslop": {
+      "repository": "https://github.com/cursor/plugins.git",
+      "ref": "main",
+      "revision": "7314f723a487ec406b6369fe5865ba034cfed166",
+      "source": "pstack/skills/unslop",
+      "copies": [
+        {
+          "source": "pstack/LICENSE",
+          "destination": "LICENSE.txt"
+        }
+      ],
+      "patch": "upstreams/patches/unslop.patch"
+    }
+  }
+}

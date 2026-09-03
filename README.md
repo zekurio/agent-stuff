@@ -28,12 +28,30 @@ Pi clones the repository and installs its npm dependencies.
 | Skill | What it does |
 | --- | --- |
 | [`bro`](skills/bro/SKILL.md) | Restates the last response in plain language. |
+| [`frontend-design`](skills/frontend-design/SKILL.md) | Guides distinctive visual design for frontend work. |
+| [`git-forges`](skills/git-forges/SKILL.md) | Inspects Git forges with Git, raw file requests, and forge-native CLIs. |
 | [`rift`](skills/rift/SKILL.md) | Splits large jobs across isolated [rift](https://github.com/anomalyco/rift) workspaces and collects the resulting commits. |
-| [`teach`](skills/teach/SKILL.md) | Explains code and changes in small, plain steps. |
 | [`unslop`](skills/unslop/SKILL.md) | Removes stock AI phrasing and rewrites prose in a human voice. |
 | [`zed`](skills/zed/SKILL.md) | Opens file and Git comparisons in Zed. |
 
 The [Catppuccin Frappé](themes/catppuccin-frappe.json) theme is included too.
+
+### Updating vendored skills
+
+`frontend-design`, `bro`, and `unslop` are copied from upstream repositories.
+Their source paths and imported commits live in
+[`upstreams/skills.json`](upstreams/skills.json).
+
+```sh
+npm run skills:check   # report available upstream changes
+npm run skills:update  # import the latest versions
+```
+
+The updater copies each skill and its license from a shallow clone. It then
+applies any local patch under [`upstreams/patches`](upstreams/patches).
+This repository enables `unslop` by default and adds a guard for factual
+writing, so those changes are kept as a small patch instead of editing the
+vendored source silently.
 
 ## Configuration
 
