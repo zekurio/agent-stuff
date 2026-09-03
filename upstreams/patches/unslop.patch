@@ -1,0 +1,9 @@
+diff --git a/SKILL.md b/SKILL.md
+index c9bb839..d969f08 100644
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -4 +3,0 @@ description: Cut AI tells from any writing. Must always apply.
+-disable-model-invocation: true
+@@ -28,0 +28,2 @@ Removing patterns is half the job. Sterile, voiceless writing is just as obvious
++For factual, legal, scientific, or evidence-cited writing, never add opinions, reactions, claims, or first-person framing that the source did not contain. In those cases, add soul through specificity, plain words, and natural rhythm while preserving citations and confidence exactly.
++
