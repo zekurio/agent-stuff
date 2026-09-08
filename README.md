@@ -29,6 +29,27 @@ This repository enables `unslop` by default and adds a guard for factual
 writing, so those changes are kept as a small patch instead of editing the
 vendored source silently.
 
+## Windows
+
+Run in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/zekurio/agent-stuff/main/scripts/install-windows.ps1 | iex
+```
+
+This downloads the repository ZIP into `%LOCALAPPDATA%\agent-stuff` and links
+its skills into `%USERPROFILE%\.agents\skills` using directory junctions.
+No Git installation or administrator rights are needed. Rerun to download
+updates and link new skills; files removed upstream are not automatically pruned.
+Conflicting entries in your skills directory are preserved and stop the script.
+For a custom skills directory, save the script and run it with `-Destination <path>`.
+
+To check the installer in a temporary directory:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test-install-windows.ps1
+```
+
 ## Nix and Home Manager
 
 The flake packages the skills and provides a Home Manager module.
