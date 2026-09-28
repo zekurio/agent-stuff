@@ -1,6 +1,6 @@
 ---
 name: git-forges
-description: Inspect repositories and links from GitHub, GitLab, Codeberg, Forgejo, Gitea, SourceHut, and other Git forges with git, curl, or forge-native CLIs. Use whenever the user gives a forge URL, asks about a remote repository, or needs a README, source file, commit, diff, issue, pull request, release, or repository metadata. Do not scrape forge repository pages with Firecrawl.
+description: Inspect repositories and links from GitHub, GitLab, Codeberg, Forgejo, Gitea, SourceHut, and other Git forges with git, curl, or forge-native CLIs. Use whenever the user gives a forge URL, asks about a remote repository, or needs a README, source file, commit, diff, issue, pull request, release, or repository metadata.
 ---
 
 # Git forges
@@ -9,8 +9,7 @@ Treat a forge as a Git remote and an API, not as a website to scrape.
 
 ## Rules
 
-- Do not use Firecrawl `scrape` or `crawl` on repository, tree, blob, commit, issue, pull request, merge request, release, or raw-file URLs.
-- Do not use Firecrawl `search` to inspect a known repository. Search is acceptable only to discover a repository when no URL or remote is known.
+- Use web search to find a repository when its URL or remote is unknown. Once you know the repository, inspect its Git remote or forge API directly.
 - Use `git` for repository contents and history.
 - Use `curl` for one raw file or a forge API endpoint.
 - Use a forge-native CLI when available, such as `gh` or `glab`, for issues, reviews, pull requests, and releases.
