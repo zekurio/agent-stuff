@@ -7,6 +7,7 @@ My shared agent skills.
 
 | Skill | What it does |
 | --- | --- |
+| [`babysit`](skills/babysit/SKILL.md) | Watches a PR through CI and review rounds, fixes findings, and merges it with `full-send`. |
 | [`bro`](skills/bro/SKILL.md) | Restates the last response in plain language. |
 | [`frontend-design`](skills/frontend-design/SKILL.md) | Guides distinctive visual design for frontend work. |
 | [`git-forges`](skills/git-forges/SKILL.md) | Inspects Git forges with Git, raw file requests, and forge-native CLIs. |
