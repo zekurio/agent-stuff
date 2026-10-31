@@ -11,6 +11,7 @@ My shared agent skills.
 | [`bro`](skills/bro/SKILL.md) | Restates the last response in plain language. |
 | [`frontend-design`](skills/frontend-design/SKILL.md) | Guides distinctive visual design for frontend work. |
 | [`git-forges`](skills/git-forges/SKILL.md) | Inspects Git forges with Git, raw file requests, and forge-native CLIs. |
+| [`sol-loop`](skills/sol-loop/SKILL.md) | Works through a review or discussion in rounds with a GPT-6.1 Sol subagent. |
 | [`unslop`](skills/unslop/SKILL.md) | Removes stock AI phrasing and rewrites prose in a human voice. |
 
 ### Updating vendored skills
