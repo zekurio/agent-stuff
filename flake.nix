@@ -1,5 +1,5 @@
 {
-  description = "Personal agent skills";
+  description = "Personal agent skills and Pi extensions";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -23,8 +23,23 @@
       default = self.packages.${system}.agent-stuff;
     });
 
-    checks = forAllSystems (system: {
+    checks = forAllSystems (system: let
+      pkgs = nixpkgs.legacyPackages.${system};
+      # The tests import only the Firecrawl client, so they need no npm deps.
+      extensions = nixpkgs.lib.fileset.toSource {
+        root = ./.;
+        fileset = ./extensions;
+      };
+    in {
       package = self.packages.${system}.agent-stuff;
+      extension-tests =
+        pkgs.runCommand "agent-stuff-extension-tests" {
+          nativeBuildInputs = [pkgs.nodejs_26];
+        } ''
+          cd ${extensions}
+          node --test "extensions/**/*.test.ts"
+          touch "$out"
+        '';
     });
 
     homeManagerModules = {
@@ -42,7 +57,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in {
       default = pkgs.mkShell {
-        packages = [pkgs.nodejs_22];
+        packages = [pkgs.nodejs_26];
       };
     });
   };
