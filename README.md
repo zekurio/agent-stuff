@@ -36,6 +36,7 @@ vendored source silently.
 | Extension | What it does |
 | --- | --- |
 | [`firecrawl`](extensions/firecrawl) | Adds `web_search` and `web_extract` tools backed by [Firecrawl](https://firecrawl.dev). |
+| [`image-placeholders`](extensions/image-placeholders) | Shows pasted and dropped images as `[Image #N]` and attaches them to the prompt. |
 
 `web_search` returns titles, URLs, and snippets. It can filter by domain
 and by recency. `web_extract` reads one page as markdown, 12,000 characters
@@ -47,6 +48,20 @@ The tools call Firecrawl's REST API with `fetch` and have no runtime
 dependencies. They stay off until `FIRECRAWL_API_KEY` is set, and Pi warns at
 startup when it is missing. Set `FIRECRAWL_URL` to use a self-hosted instance,
 where the key is optional.
+
+Stock Pi saves a `Ctrl+V` image to a temp file and types that path into the
+prompt. The model then has to call `read` on the path to see the image.
+`image-placeholders` puts `[Image #1]` in the editor instead and attaches the
+image to the prompt when you send it, so the model sees it right away.
+Dropping an image file into the terminal works the same way, whether the
+terminal sends a plain path, a quoted or escaped path, or a `file://` URI.
+Numbers keep counting up for the whole Pi process, so a prompt recalled from
+history still attaches its own image. Backspace, Delete, and the arrow keys
+treat a placeholder as one character, like Pi's `[paste #N]` markers. This
+wraps a private editor method, so a Pi update can quietly turn it back into
+character-by-character deletion. In bash mode (`!`) the real path is
+inserted. The extension replaces Pi's editor, so it conflicts with other
+extensions that also replace it.
 
 Without Nix, install the package with Pi:
 

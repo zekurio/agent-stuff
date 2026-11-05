@@ -20,7 +20,8 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/firecrawl/index.ts"
+      "./extensions/firecrawl/index.ts",
+      "./extensions/image-placeholders/index.ts"
     ],
     "skills": [
       "./skills"
