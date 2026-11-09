@@ -11,12 +11,13 @@ My shared agent skills and [Pi](https://pi.dev) extensions.
 | [`bro`](skills/bro/SKILL.md) | Restates the last response in plain language. |
 | [`frontend-design`](skills/frontend-design/SKILL.md) | Guides distinctive visual design for frontend work. |
 | [`git-forges`](skills/git-forges/SKILL.md) | Inspects Git forges with Git, raw file requests, and forge-native CLIs. |
+| [`improve`](skills/improve/SKILL.md) | Audits a codebase read-only and writes self-contained implementation plans for other agents. |
 | [`sol-loop`](skills/sol-loop/SKILL.md) | Works through a review or discussion in rounds with a GPT-6.1 Sol subagent. |
 | [`unslop`](skills/unslop/SKILL.md) | Removes stock AI phrasing and rewrites prose in a human voice. |
 
 ### Updating vendored skills
 
-`frontend-design`, `bro`, and `unslop` are copied from upstream repositories.
+`frontend-design`, `bro`, `improve`, and `unslop` are copied from upstream repositories.
 Their source paths and imported commits live in
 [`upstreams/skills.json`](upstreams/skills.json).
 
@@ -29,7 +30,9 @@ The updater copies each skill and its license from a shallow clone. It then
 applies any local patch under [`upstreams/patches`](upstreams/patches).
 This repository enables `unslop` by default and adds a guard for factual
 writing, so those changes are kept as a small patch instead of editing the
-vendored source silently.
+vendored source silently. `improve` gets a patch too: under T3 Code it runs its
+subagents and executors through T3's orchestrator tools instead of the
+harness's own subagents.
 
 ## Pi extensions
 

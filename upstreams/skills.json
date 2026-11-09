@@ -31,6 +31,19 @@
         }
       ],
       "patch": "upstreams/patches/unslop.patch"
+    },
+    "improve": {
+      "repository": "https://github.com/shadcn/improve.git",
+      "ref": "main",
+      "revision": "cac56e1ebd3c279aa9153616cfeac7b174ab90f9",
+      "source": "skills/improve",
+      "copies": [
+        {
+          "source": "LICENSE.md",
+          "destination": "LICENSE.txt"
+        }
+      ],
+      "patch": "upstreams/patches/improve.patch"
     }
   }
 }
