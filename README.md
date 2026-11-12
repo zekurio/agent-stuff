@@ -1,5 +1,13 @@
 # agent-stuff
 
+> **Moved:** Development continues at [tangled.org/zekurio.me/agent-stuff](https://tangled.org/zekurio.me/agent-stuff).
+> This GitHub repository is archived and no longer maintained. Please file issues and contribute at the new repository.
+>
+> Clone the new repository:
+> ```sh
+> git clone zekurio.me@knot.zekurio.me:zekurio.me/agent-stuff
+> ```
+
 My shared agent skills and [Pi](https://pi.dev) extensions.
 
 ## Skills
